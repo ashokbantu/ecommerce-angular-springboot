@@ -1,0 +1,173 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ecommerce"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  eureka-server:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: mvn -pl eureka-server spring-boot:run
+    ports:
+      - "8761:8761"
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  config-server:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: mvn -pl config-server spring-boot:run
+    ports:
+      - "8888:8888"
+    environment:
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
+    depends_on:
+      - eureka-server
+
+  api-gateway:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: mvn -pl api-gateway spring-boot:run
+    ports:
+      - "8080:8080"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
+      DB_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - config-server
+
+  auth-service:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: mvn -pl auth-service spring-boot:run
+    ports:
+      - "8081:8081"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
+      DB_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - postgres
+      - rabbitmq
+      - config-server
+
+  product-service:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: mvn -pl product-service spring-boot:run
+    ports:
+      - "8082:8082"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
+      DB_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - postgres
+      - rabbitmq
+      - config-server
+
+  order-service:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: mvn -pl order-service spring-boot:run
+    ports:
+      - "8083:8083"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
+      DB_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - postgres
+      - rabbitmq
+      - config-server
+
+  inventory-service:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: mvn -pl inventory-service spring-boot:run
+    ports:
+      - "8084:8084"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
+      DB_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - postgres
+      - rabbitmq
+      - config-server
+
+  payment-service:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: mvn -pl payment-service spring-boot:run
+    ports:
+      - "8085:8085"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
+      DB_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - postgres
+      - rabbitmq
+      - config-server
+
+  notification-service:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: mvn -pl notification-service spring-boot:run
+    ports:
+      - "8086:8086"
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
+      DB_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - rabbitmq
+      - config-server
