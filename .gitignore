@@ -1,0 +1,44 @@
+# ───────────────────────────────────────────────────────────────
+# Root .gitignore — ecommerce-angular-springboot
+# ───────────────────────────────────────────────────────────────
+
+# ── Java / Maven ───────────────────────────────────────────────
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.ear
+
+# ── IDE ────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+.project
+.classpath
+.settings/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vscode/
+
+# ── Angular / Node ─────────────────────────────────────────────
+**/node_modules/
+**/dist/
+**/.angular/
+**/.npm/
+frontend/ecommerce-ui/.cache/
+
+# ── OS ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Docker ─────────────────────────────────────────────────────
+# Keep docker-compose.yml — exclude local override
+docker-compose.override.yml
+
+# ── Logs ───────────────────────────────────────────────────────
+*.log
+logs/
