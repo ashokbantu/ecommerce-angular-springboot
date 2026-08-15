@@ -1,5 +1,8 @@
 version: "3.9"
 
+volumes:
+  maven-repo:
+
 services:
   postgres:
     image: postgres:16
@@ -24,37 +27,59 @@ services:
       - "5672:5672"
       - "15672:15672"
 
+  # One-shot init container: builds and installs common-lib (and warms the
+  # shared Maven repo cache) BEFORE any service container starts. This avoids
+  # each service container resolving `com.ecommerce:common-lib` on its own
+  # and failing with "Could not find artifact com.ecommerce:common-lib".
+  maven-build:
+    image: maven:3.9.9-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - maven-repo:/root/.m2
+    command: mvn -pl common-lib -am install -DskipTests
+
   eureka-server:
     image: maven:3.9.9-eclipse-temurin-17
     working_dir: /app
     volumes:
       - ./:/app
-    command: mvn -pl eureka-server spring-boot:run
+      - maven-repo:/root/.m2
+    command: mvn -pl eureka-server -am spring-boot:run
     ports:
       - "8761:8761"
     depends_on:
-      - postgres
-      - rabbitmq
+      maven-build:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
 
   config-server:
     image: maven:3.9.9-eclipse-temurin-17
     working_dir: /app
     volumes:
       - ./:/app
-    command: mvn -pl config-server spring-boot:run
+      - maven-repo:/root/.m2
+    command: mvn -pl config-server -am spring-boot:run
     ports:
       - "8888:8888"
     environment:
       EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
     depends_on:
-      - eureka-server
+      maven-build:
+        condition: service_completed_successfully
+      eureka-server:
+        condition: service_started
 
   api-gateway:
     image: maven:3.9.9-eclipse-temurin-17
     working_dir: /app
     volumes:
       - ./:/app
-    command: mvn -pl api-gateway spring-boot:run
+      - maven-repo:/root/.m2
+    command: mvn -pl api-gateway -am spring-boot:run
     ports:
       - "8080:8080"
     environment:
@@ -63,14 +88,18 @@ services:
       DB_HOST: postgres
       RABBITMQ_HOST: rabbitmq
     depends_on:
-      - config-server
+      maven-build:
+        condition: service_completed_successfully
+      config-server:
+        condition: service_started
 
   auth-service:
     image: maven:3.9.9-eclipse-temurin-17
     working_dir: /app
     volumes:
       - ./:/app
-    command: mvn -pl auth-service spring-boot:run
+      - maven-repo:/root/.m2
+    command: mvn -pl auth-service -am spring-boot:run
     ports:
       - "8081:8081"
     environment:
@@ -79,16 +108,22 @@ services:
       DB_HOST: postgres
       RABBITMQ_HOST: rabbitmq
     depends_on:
-      - postgres
-      - rabbitmq
-      - config-server
+      maven-build:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      config-server:
+        condition: service_started
 
   product-service:
     image: maven:3.9.9-eclipse-temurin-17
     working_dir: /app
     volumes:
       - ./:/app
-    command: mvn -pl product-service spring-boot:run
+      - maven-repo:/root/.m2
+    command: mvn -pl product-service -am spring-boot:run
     ports:
       - "8082:8082"
     environment:
@@ -97,16 +132,22 @@ services:
       DB_HOST: postgres
       RABBITMQ_HOST: rabbitmq
     depends_on:
-      - postgres
-      - rabbitmq
-      - config-server
+      maven-build:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      config-server:
+        condition: service_started
 
   order-service:
     image: maven:3.9.9-eclipse-temurin-17
     working_dir: /app
     volumes:
       - ./:/app
-    command: mvn -pl order-service spring-boot:run
+      - maven-repo:/root/.m2
+    command: mvn -pl order-service -am spring-boot:run
     ports:
       - "8083:8083"
     environment:
@@ -115,16 +156,22 @@ services:
       DB_HOST: postgres
       RABBITMQ_HOST: rabbitmq
     depends_on:
-      - postgres
-      - rabbitmq
-      - config-server
+      maven-build:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      config-server:
+        condition: service_started
 
   inventory-service:
     image: maven:3.9.9-eclipse-temurin-17
     working_dir: /app
     volumes:
       - ./:/app
-    command: mvn -pl inventory-service spring-boot:run
+      - maven-repo:/root/.m2
+    command: mvn -pl inventory-service -am spring-boot:run
     ports:
       - "8084:8084"
     environment:
@@ -133,16 +180,22 @@ services:
       DB_HOST: postgres
       RABBITMQ_HOST: rabbitmq
     depends_on:
-      - postgres
-      - rabbitmq
-      - config-server
+      maven-build:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      config-server:
+        condition: service_started
 
   payment-service:
     image: maven:3.9.9-eclipse-temurin-17
     working_dir: /app
     volumes:
       - ./:/app
-    command: mvn -pl payment-service spring-boot:run
+      - maven-repo:/root/.m2
+    command: mvn -pl payment-service -am spring-boot:run
     ports:
       - "8085:8085"
     environment:
@@ -151,16 +204,22 @@ services:
       DB_HOST: postgres
       RABBITMQ_HOST: rabbitmq
     depends_on:
-      - postgres
-      - rabbitmq
-      - config-server
+      maven-build:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      config-server:
+        condition: service_started
 
   notification-service:
     image: maven:3.9.9-eclipse-temurin-17
     working_dir: /app
     volumes:
       - ./:/app
-    command: mvn -pl notification-service spring-boot:run
+      - maven-repo:/root/.m2
+    command: mvn -pl notification-service -am spring-boot:run
     ports:
       - "8086:8086"
     environment:
@@ -169,5 +228,9 @@ services:
       DB_HOST: postgres
       RABBITMQ_HOST: rabbitmq
     depends_on:
-      - rabbitmq
-      - config-server
+      maven-build:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_started
+      config-server:
+        condition: service_started
