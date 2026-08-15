@@ -26,6 +26,11 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # One-shot init container: builds and installs common-lib (and warms the
   # shared Maven repo cache) BEFORE any service container starts. This avoids
@@ -44,6 +49,11 @@ services:
   # into the build, which has no main class and causes:
   # "Unable to find a suitable main class". Instead, common-lib is built
   # once by maven-build above and resolved from the shared maven-repo cache.
+  #
+  # eureka-server and config-server use healthchecks (via Actuator's
+  # /actuator/health, which both already depend on) so that dependents wait
+  # for the Spring context to actually be UP -- not just for the container
+  # process to start -- avoiding "Connection refused" races on startup.
 
   eureka-server:
     image: maven:3.9.9-eclipse-temurin-17
@@ -54,13 +64,19 @@ services:
     command: mvn -pl eureka-server spring-boot:run
     ports:
       - "8761:8761"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
     depends_on:
       maven-build:
         condition: service_completed_successfully
       postgres:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
 
   config-server:
     image: maven:3.9.9-eclipse-temurin-17
@@ -73,11 +89,17 @@ services:
       - "8888:8888"
     environment:
       EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
     depends_on:
       maven-build:
         condition: service_completed_successfully
       eureka-server:
-        condition: service_started
+        condition: service_healthy
 
   api-gateway:
     image: maven:3.9.9-eclipse-temurin-17
@@ -97,7 +119,7 @@ services:
       maven-build:
         condition: service_completed_successfully
       config-server:
-        condition: service_started
+        condition: service_healthy
 
   auth-service:
     image: maven:3.9.9-eclipse-temurin-17
@@ -119,9 +141,9 @@ services:
       postgres:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       config-server:
-        condition: service_started
+        condition: service_healthy
 
   product-service:
     image: maven:3.9.9-eclipse-temurin-17
@@ -143,9 +165,9 @@ services:
       postgres:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       config-server:
-        condition: service_started
+        condition: service_healthy
 
   order-service:
     image: maven:3.9.9-eclipse-temurin-17
@@ -167,9 +189,9 @@ services:
       postgres:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       config-server:
-        condition: service_started
+        condition: service_healthy
 
   inventory-service:
     image: maven:3.9.9-eclipse-temurin-17
@@ -191,9 +213,9 @@ services:
       postgres:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       config-server:
-        condition: service_started
+        condition: service_healthy
 
   payment-service:
     image: maven:3.9.9-eclipse-temurin-17
@@ -215,9 +237,9 @@ services:
       postgres:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       config-server:
-        condition: service_started
+        condition: service_healthy
 
   notification-service:
     image: maven:3.9.9-eclipse-temurin-17
@@ -237,6 +259,6 @@ services:
       maven-build:
         condition: service_completed_successfully
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       config-server:
-        condition: service_started
+        condition: service_healthy
