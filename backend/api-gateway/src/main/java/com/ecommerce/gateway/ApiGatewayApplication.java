@@ -16,7 +16,8 @@ import org.springframework.context.annotation.FilterType;
  * context. It is excluded here; the gateway uses its own reactive
  * GlobalErrorHandler (implements ErrorWebExceptionHandler) instead.
  */
-@SpringBootApplication(scanBasePackages = "com.ecommerce",
+@SpringBootApplication
+@ComponentScan(basePackages = "com.ecommerce",
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.ASSIGNABLE_TYPE,
                 classes = GlobalExceptionHandler.class))
